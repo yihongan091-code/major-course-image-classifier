@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f4ee" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="课程识别" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>专业课程图片识别</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="app-title">
+        <div>
+          <p class="kicker">先选专业 · 再识别课程 · 支持拍照</p>
+          <h1 id="app-title">专业课程图片识别</h1>
+          <p class="subhead">首次选择大学专业后，导入课件、作业、教材或课堂照片，系统会自动判断图片属于该专业的哪一门课程。</p>
+        </div>
+        <div class="hero-actions">
+          <button id="cameraBtn" class="primary-action" type="button">
+            <span aria-hidden="true">◎</span>
+            <strong>拍照</strong>
+          </button>
+          <label class="secondary-action">
+            <input id="imageInput" type="file" accept="image/*" capture="environment" multiple />
+            <span aria-hidden="true">+</span>
+            <strong>上传</strong>
+          </label>
+          <button id="installBtn" class="icon-button" type="button" title="安装应用" aria-label="安装应用">
+            <span aria-hidden="true">⌂</span>
+          </button>
+          <button id="exportBtn" class="icon-button" type="button" title="导出结果" aria-label="导出结果">
+            <span aria-hidden="true">⇩</span>
+          </button>
+          <button id="clearBtn" class="icon-button" type="button" title="清空" aria-label="清空">
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="installHint" class="notice" hidden>
+        <strong>安装提示</strong>
+        <span>iOS 请用 Safari 分享到“添加到主屏幕”；Android、Windows、macOS 可在浏览器菜单里安装。</span>
+      </section>
+
+      <section class="setup-band" aria-label="专业设置">
+        <label class="text-field">
+          <span>当前专业</span>
+          <select id="majorSelect"></select>
+        </label>
+        <div class="current-major">
+          <strong id="currentMajorName">未选择专业</strong>
+          <span id="coursePoolCount">0 门课程可识别</span>
+        </div>
+        <label class="text-field custom-course-field">
+          <span>补充课程</span>
+          <textarea id="customCourses" rows="2" placeholder="可输入本专业课程名，用顿号、逗号、空格或换行分隔"></textarea>
+        </label>
+      </section>
+
+      <section class="control-band" aria-label="识别设置">
+        <label class="text-field">
+          <span>图片中的文字</span>
+          <textarea id="hintText" rows="2" placeholder="可粘贴课程名、题目、课件标题、作业要求或文件名中的文字，提高课程识别准确率"></textarea>
+        </label>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input id="useVisualHints" type="checkbox" checked />
+            <span>视觉线索</span>
+          </label>
+          <label class="toggle">
+            <input id="groupByCourse" type="checkbox" checked />
+            <span>按课程分组</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="ai-band" aria-label="AI视觉理解设置">
+        <div class="ai-title">
+          <strong>AI 看图理解</strong>
+          <span id="aiStatus">未配置时使用本地识别</span>
+        </div>
+        <div class="ai-grid">
+          <label class="toggle">
+            <input id="useAiVision" type="checkbox" />
+            <span>启用 AI</span>
+          </label>
+          <label class="text-field">
+            <span>接口地址</span>
+            <input id="aiEndpoint" type="url" placeholder="例如 https://你的服务/api/vision-course" />
+          </label>
+          <label class="text-field">
+            <span>访问密钥</span>
+            <input id="aiKey" type="password" autocomplete="off" placeholder="保存在本机浏览器" />
+          </label>
+        </div>
+      </section>
+
+      <section class="summary-strip" aria-label="识别统计">
+        <div class="summary-item">
+          <span id="totalCount">0</span>
+          <small>图片</small>
+        </div>
+        <div class="summary-item">
+          <span id="courseCount">0</span>
+          <small>课程</small>
+        </div>
+        <div class="summary-item">
+          <span id="avgConfidence">0%</span>
+          <small>平均置信度</small>
+        </div>
+      </section>
+
+      <section id="emptyState" class="empty-state" aria-live="polite">
+        <div class="empty-visual" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <h2>先选择专业，再导入图片</h2>
+        <p>支持手机拍照、相册多选、电脑上传和课件截图识别。</p>
+      </section>
+
+      <section id="results" class="results" aria-label="课程识别结果"></section>
+    </main>
+
+    <dialog id="cameraDialog" class="camera-dialog" aria-labelledby="cameraTitle">
+      <form method="dialog" class="camera-panel">
+        <div class="camera-head">
+          <h2 id="cameraTitle">拍照识别课程</h2>
+          <button id="closeCameraBtn" class="icon-button flat" type="button" title="关闭" aria-label="关闭">×</button>
+        </div>
+        <div class="camera-view">
+          <video id="cameraPreview" autoplay playsinline muted></video>
+          <canvas id="cameraCanvas" hidden></canvas>
+          <p id="cameraStatus">正在准备相机...</p>
+        </div>
+        <div class="camera-actions">
+          <button id="switchCameraBtn" class="icon-button" type="button" title="切换摄像头" aria-label="切换摄像头">⇄</button>
+          <button id="captureBtn" class="shutter" type="button" aria-label="拍摄"></button>
+          <label class="icon-button file-fallback" title="从系统相机选择">
+            <input id="cameraFallbackInput" type="file" accept="image/*" capture="environment" />
+            +
+          </label>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="cardTemplate">
+      <article class="image-card">
+        <button class="remove-card" type="button" title="移除" aria-label="移除">×</button>
+        <img alt="" />
+        <div class="card-body">
+          <div class="card-title-row">
+            <h3></h3>
+            <span class="confidence"></span>
+          </div>
+          <label class="subject-picker">
+            <span>识别课程</span>
+            <select></select>
+          </label>
+          <p class="reason"></p>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
