@@ -1,0 +1,20 @@
+{
+  "name": "专业课程图片识别",
+  "short_name": "课程识别",
+  "description": "首次选择专业后，拍照或上传图片，自动识别该专业下的课程内容。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f4ee",
+  "theme_color": "#176b63",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
