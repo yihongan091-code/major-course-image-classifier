@@ -730,6 +730,17 @@ function classifyCourse(fileName, hint, visual, detectedText = "", aiUnderstandi
   }
 
   const courses = getCurrentCourses();
+  const aiCourse = aiUnderstanding ? matchAiCourse(aiUnderstanding.course, Object.keys(courses)) : "";
+  if (aiCourse) {
+    return {
+      major: state.major,
+      course: aiCourse,
+      courseGroup: getCourseGroup(aiCourse),
+      confidence: Math.max(55, Math.min(99, Number(aiUnderstanding.confidence) || 85)),
+      reason: `AI理解：${aiUnderstanding.summary || "已识别图片内容"}`
+    };
+  }
+
   const aiText = aiUnderstanding
     ? `${aiUnderstanding.course || ""} ${aiUnderstanding.summary || ""} ${(aiUnderstanding.keywords || []).join(" ")}`
     : "";
@@ -795,6 +806,14 @@ function classifyCourse(fileName, hint, visual, detectedText = "", aiUnderstandi
   };
 }
 
+function matchAiCourse(value, courses) {
+  const target = normalize(value);
+  if (!target || target === normalize("未识别课程")) return "";
+  return courses.find((course) => normalize(course) === target)
+    || courses.find((course) => target.includes(normalize(course)) || normalize(course).includes(target))
+    || "";
+}
+
 function getCourseGroup(course) {
   if (!course || course === "未识别课程") return "待确认";
   for (const [group, pattern] of courseGroupRules) {
@@ -811,12 +830,13 @@ async function understandImageWithAi(dataUrl, fileName) {
   }
 
   try {
+    const optimizedImage = await optimizeImageForAi(dataUrl);
     const payload = {
       major: state.major,
       courses: Object.keys(getCurrentCourses()),
       fileName,
-      image: dataUrl,
-      instruction: "请理解图片中的教材、课件、题目或课堂内容，并判断它最可能属于当前专业的哪一门课程。"
+      image: optimizedImage,
+      instruction: "像搜题软件一样识别图片中的文字、公式、图表和知识点，并从候选课程中选择最匹配课程。"
     };
 
     const response = await fetch(aiEndpoint.value.trim(), {
@@ -842,10 +862,32 @@ function normalizeAiResult(data) {
   return {
     course: data.course || data.课程 || "",
     summary: data.summary || data.内容概述 || data.reason || data.判断依据 || "",
+    chapter: data.chapter || data.topic || data.章节 || data.知识点 || "",
+    questionType: data.questionType || data.type || data.题型 || "",
+    ocrText: data.ocrText || data.text || data.识别文字 || "",
+    confidence: Number(data.confidence || data.置信度 || 0),
     keywords: Array.isArray(data.keywords || data.关键词)
       ? data.keywords || data.关键词
       : String(data.keywords || data.关键词 || "").split(/[\s,，、;；]+/).filter(Boolean)
   };
+}
+
+function optimizeImageForAi(dataUrl) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxSide = 1600;
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.84));
+    };
+    image.onerror = () => resolve(dataUrl);
+    image.src = dataUrl;
+  });
 }
 
 function renderAiStatus(message) {
@@ -1027,6 +1069,10 @@ function renderCard(item, courses) {
   const confidence = card.querySelector(".confidence");
   const select = card.querySelector("select");
   const reason = card.querySelector(".reason");
+  const aiResult = card.querySelector(".ai-result");
+  const aiTopic = card.querySelector(".ai-topic");
+  const aiType = card.querySelector(".ai-type");
+  const aiOcr = card.querySelector(".ai-ocr");
   const remove = card.querySelector(".remove-card");
 
   image.src = item.dataUrl;
@@ -1034,6 +1080,14 @@ function renderCard(item, courses) {
   title.textContent = item.name;
   confidence.textContent = `${item.confidence}%`;
   reason.textContent = `${item.major} · ${item.reason}`;
+  if (item.aiUnderstanding) {
+    aiResult.hidden = false;
+    aiTopic.textContent = `知识点：${item.aiUnderstanding.chapter || "未确定"}`;
+    aiType.textContent = `题型：${item.aiUnderstanding.questionType || "内容识别"}`;
+    aiOcr.textContent = item.aiUnderstanding.ocrText
+      ? `识别文字：${item.aiUnderstanding.ocrText}`
+      : "未提取到清晰文字";
+  }
 
   for (const course of ["未识别课程", ...courses]) {
     const option = document.createElement("option");

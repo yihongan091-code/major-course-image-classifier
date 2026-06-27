@@ -102,11 +102,11 @@
           </label>
           <label class="text-field">
             <span>接口地址</span>
-            <input id="aiEndpoint" type="url" placeholder="例如 https://你的服务/api/vision-course" />
+            <input id="aiEndpoint" type="url" placeholder="例如 https://你的应用.vercel.app/api/vision-course" />
           </label>
           <label class="text-field">
-            <span>访问密钥</span>
-            <input id="aiKey" type="password" autocomplete="off" placeholder="保存在本机浏览器" />
+            <span>后端访问口令（可选）</span>
+            <input id="aiKey" type="password" autocomplete="off" placeholder="不要填写模型 API Key" />
           </label>
         </div>
       </section>
@@ -179,6 +179,11 @@
             <select></select>
           </label>
           <p class="reason"></p>
+          <div class="ai-result" hidden>
+            <span class="ai-topic"></span>
+            <span class="ai-type"></span>
+            <p class="ai-ocr"></p>
+          </div>
         </div>
       </article>
     </template>

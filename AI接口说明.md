@@ -27,8 +27,12 @@ Authorization: Bearer 你的密钥
 ```json
 {
   "course": "数据结构",
+  "chapter": "二叉树遍历",
+  "questionType": "算法题",
+  "ocrText": "请写出二叉树的前序遍历结果",
   "summary": "图片中出现二叉树遍历、节点和递归算法内容。",
-  "keywords": ["二叉树", "遍历", "递归"]
+  "keywords": ["二叉树", "遍历", "递归"],
+  "confidence": 94
 }
 ```
 
@@ -45,5 +49,7 @@ Authorization: Bearer 你的密钥
 ## 说明
 
 - `course` 应尽量从 `courses` 列表中选择。
+- `chapter` 是章节或知识点，`questionType` 是题型或内容类型。
+- `ocrText` 是从图片中提取的关键文字。
 - `summary` 会显示在识别结果里。
 - 如果 AI 接口不可用，网页会自动退回本地关键词和视觉线索识别。

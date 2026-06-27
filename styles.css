@@ -524,6 +524,32 @@ select {
   line-height: 1.45;
 }
 
+.ai-result {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.ai-result[hidden] {
+  display: none;
+}
+
+.ai-result span {
+  overflow-wrap: anywhere;
+}
+
+.ai-ocr {
+  grid-column: 1 / -1;
+  max-height: 78px;
+  margin: 0;
+  overflow: auto;
+  line-height: 1.45;
+}
+
 @media (max-width: 720px) {
   .app-shell {
     padding-inline: 12px;

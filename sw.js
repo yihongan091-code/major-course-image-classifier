@@ -1,4 +1,4 @@
-const CACHE_NAME = "major-image-classifier-v2";
+const CACHE_NAME = "major-image-classifier-v3";
 const ASSETS = [
   "./",
   "./index.html",
