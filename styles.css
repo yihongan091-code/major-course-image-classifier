@@ -165,14 +165,35 @@ h1 {
 }
 
 .current-major {
-  display: grid;
-  align-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
   min-height: 70px;
   padding: 12px 14px;
   border-left: 4px solid var(--accent);
   background: #fff;
   border-radius: 8px;
+}
+
+.current-major > div {
+  display: grid;
+  gap: 6px;
+}
+
+.text-command {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--accent-strong);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#majorField[hidden] {
+  display: none;
 }
 
 .current-major strong {
@@ -306,7 +327,7 @@ input[type="password"] {
 
 .summary-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -331,6 +352,12 @@ input[type="password"] {
   margin-top: 8px;
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.save-summary span {
+  color: var(--accent-strong);
+  font-size: 1.05rem;
+  line-height: 1.2;
 }
 
 .empty-state {
@@ -511,7 +538,7 @@ select {
 
   .hero-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) repeat(3, 52px);
+    grid-template-columns: repeat(2, minmax(0, 1fr)) repeat(4, 52px);
   }
 
   .primary-action,
@@ -525,7 +552,7 @@ select {
   }
 
   .summary-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .summary-item {
@@ -639,7 +666,7 @@ select {
 
 @media (max-width: 520px) {
   .hero-actions {
-    grid-template-columns: 1fr 1fr 44px 44px 44px;
+    grid-template-columns: 1fr 1fr 44px 44px 44px 44px;
     gap: 8px;
   }
 

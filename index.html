@@ -27,15 +27,18 @@
             <strong>拍照</strong>
           </button>
           <label class="secondary-action">
-            <input id="imageInput" type="file" accept="image/*" capture="environment" multiple />
+            <input id="imageInput" type="file" accept="image/*" multiple />
             <span aria-hidden="true">+</span>
-            <strong>上传</strong>
+            <strong>相册</strong>
           </label>
           <button id="installBtn" class="icon-button" type="button" title="安装应用" aria-label="安装应用">
             <span aria-hidden="true">⌂</span>
           </button>
           <button id="exportBtn" class="icon-button" type="button" title="导出结果" aria-label="导出结果">
             <span aria-hidden="true">⇩</span>
+          </button>
+          <button id="saveBtn" class="icon-button" type="button" title="立即保存" aria-label="立即保存">
+            <span aria-hidden="true">✓</span>
           </button>
           <button id="clearBtn" class="icon-button" type="button" title="清空" aria-label="清空">
             <span aria-hidden="true">×</span>
@@ -49,13 +52,16 @@
       </section>
 
       <section class="setup-band" aria-label="专业设置">
-        <label class="text-field">
+        <label id="majorField" class="text-field">
           <span>当前专业</span>
           <select id="majorSelect"></select>
         </label>
         <div class="current-major">
-          <strong id="currentMajorName">未选择专业</strong>
-          <span id="coursePoolCount">0 门课程可识别</span>
+          <div>
+            <strong id="currentMajorName">未选择专业</strong>
+            <span id="coursePoolCount">0 门课程可识别</span>
+          </div>
+          <button id="changeMajorBtn" class="text-command" type="button">更改专业</button>
         </div>
         <label class="text-field custom-course-field">
           <span>补充课程</span>
@@ -76,6 +82,10 @@
           <label class="toggle">
             <input id="groupByCourse" type="checkbox" checked />
             <span>按课程分组</span>
+          </label>
+          <label class="toggle">
+            <input id="mergeRelatedCourses" type="checkbox" checked />
+            <span>同类课程归并</span>
           </label>
         </div>
       </section>
@@ -113,6 +123,10 @@
         <div class="summary-item">
           <span id="avgConfidence">0%</span>
           <small>平均置信度</small>
+        </div>
+        <div class="summary-item save-summary">
+          <span id="saveStatus">已保存</span>
+          <small>本机自动保存</small>
         </div>
       </section>
 

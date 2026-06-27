@@ -509,20 +509,46 @@ function mergeCatalog(target, source) {
 const state = {
   major: localStorage.getItem("selectedMajor") || "",
   items: [],
+  editingMajor: !localStorage.getItem("selectedMajor"),
   cameraFacing: "environment",
   cameraStream: null,
-  installPrompt: null
+  installPrompt: null,
+  saveTimer: null
 };
+
+const STORAGE_DB = "course-image-classifier";
+const STORAGE_STORE = "app-state";
+const STORAGE_KEY = "saved-images";
+
+const courseGroupRules = [
+  ["程序设计与软件开发", /程序|编程|软件|web|前端|后端|移动应用|云原生|人机交互/],
+  ["数据、算法与人工智能", /数据|算法|机器学习|深度学习|人工智能|模式识别|自然语言|计算机视觉|统计学习|商务智能/],
+  ["计算机系统与网络", /操作系统|计算机组成|网络|编译|信息安全|密码|攻防|数据库|嵌入式|物联网/],
+  ["数学与统计基础", /数学|代数|概率|统计|微积分|微分方程|复变|实变|几何|计量/],
+  ["电子、电气与控制", /电路|电子|信号|通信|电机|电力|控制|自动化|PLC|传感器|继电保护/],
+  ["力学、结构与工程设计", /力学|结构|制图|机械|材料|混凝土|钢结构|地基|建筑|工程/],
+  ["医学基础", /解剖|生理|病理|药理|生物化学|微生物|医学基础/],
+  ["临床诊疗与护理", /诊断|内科|外科|护理|急救|妇产|儿科|口腔|影像|中医/],
+  ["经济、金融与会计", /经济|金融|证券|投资|会计|财务|审计|税法|计量经济/],
+  ["管理、营销与商务", /管理|营销|供应链|物流|电子商务|运营|旅游|酒店|创业/],
+  ["法律与公共治理", /法学|法理|宪法|民法|刑法|行政法|诉讼|公共政策|政治|治理/],
+  ["语言、文学与传播", /语言|汉语|文学|英语|翻译|写作|新闻|传播|编辑/],
+  ["艺术与设计", /设计|素描|色彩|构成|音乐|乐理|表演|动画|影视/],
+  ["生命、环境与农业", /生物|生态|环境|农学|植物|作物|土壤|食品/]
+];
 
 const majorSelect = document.querySelector("#majorSelect");
 const currentMajorName = document.querySelector("#currentMajorName");
 const coursePoolCount = document.querySelector("#coursePoolCount");
+const majorField = document.querySelector("#majorField");
+const changeMajorBtn = document.querySelector("#changeMajorBtn");
 const customCourses = document.querySelector("#customCourses");
 const imageInput = document.querySelector("#imageInput");
 const cameraFallbackInput = document.querySelector("#cameraFallbackInput");
 const hintText = document.querySelector("#hintText");
 const useVisualHints = document.querySelector("#useVisualHints");
 const groupByCourse = document.querySelector("#groupByCourse");
+const mergeRelatedCourses = document.querySelector("#mergeRelatedCourses");
 const useAiVision = document.querySelector("#useAiVision");
 const aiEndpoint = document.querySelector("#aiEndpoint");
 const aiKey = document.querySelector("#aiKey");
@@ -531,12 +557,14 @@ const results = document.querySelector("#results");
 const template = document.querySelector("#cardTemplate");
 const emptyState = document.querySelector("#emptyState");
 const exportBtn = document.querySelector("#exportBtn");
+const saveBtn = document.querySelector("#saveBtn");
 const clearBtn = document.querySelector("#clearBtn");
 const installBtn = document.querySelector("#installBtn");
 const installHint = document.querySelector("#installHint");
 const totalCount = document.querySelector("#totalCount");
 const courseCount = document.querySelector("#courseCount");
 const avgConfidence = document.querySelector("#avgConfidence");
+const saveStatus = document.querySelector("#saveStatus");
 const cameraBtn = document.querySelector("#cameraBtn");
 const cameraDialog = document.querySelector("#cameraDialog");
 const closeCameraBtn = document.querySelector("#closeCameraBtn");
@@ -548,7 +576,7 @@ const cameraStatus = document.querySelector("#cameraStatus");
 
 init();
 
-function init() {
+async function init() {
   const placeholder = document.createElement("option");
   placeholder.value = "";
   placeholder.textContent = "请选择你的专业";
@@ -567,9 +595,17 @@ function init() {
     state.major = majorSelect.value;
     if (state.major) localStorage.setItem("selectedMajor", state.major);
     else localStorage.removeItem("selectedMajor");
+    state.editingMajor = !state.major;
     customCourses.value = localStorage.getItem(getCustomCourseKey()) || "";
     reclassifyAll();
     render();
+    scheduleSave();
+  });
+
+  changeMajorBtn.addEventListener("click", () => {
+    state.editingMajor = true;
+    updateMajorSelectionUI();
+    majorSelect.focus();
   });
 
   customCourses.value = localStorage.getItem(getCustomCourseKey()) || "";
@@ -577,6 +613,7 @@ function init() {
     localStorage.setItem(getCustomCourseKey(), customCourses.value);
     reclassifyAll();
     render();
+    scheduleSave();
   });
 
   imageInput.addEventListener("change", (event) => addFiles(Array.from(event.target.files || []), "上传图片"));
@@ -584,12 +621,18 @@ function init() {
   hintText.addEventListener("input", () => {
     reclassifyAll();
     render();
+    scheduleSave();
   });
   useVisualHints.addEventListener("change", () => {
     reclassifyAll();
     render();
+    scheduleSave();
   });
   groupByCourse.addEventListener("change", render);
+  mergeRelatedCourses.addEventListener("change", () => {
+    render();
+    scheduleSave();
+  });
   useAiVision.checked = localStorage.getItem("useAiVision") === "true";
   aiEndpoint.value = localStorage.getItem("aiEndpoint") || "";
   aiKey.value = localStorage.getItem("aiKey") || "";
@@ -597,6 +640,7 @@ function init() {
   aiEndpoint.addEventListener("input", saveAiSettings);
   aiKey.addEventListener("input", saveAiSettings);
   clearBtn.addEventListener("click", clearAll);
+  saveBtn.addEventListener("click", persistItems);
   exportBtn.addEventListener("click", exportResults);
   cameraBtn.addEventListener("click", openCamera);
   closeCameraBtn.addEventListener("click", closeCamera);
@@ -624,6 +668,7 @@ function init() {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
   }
 
+  await restoreItems();
   render();
 }
 
@@ -663,6 +708,7 @@ async function addImage(dataUrl, name) {
     ...classification
   });
   render();
+  scheduleSave();
 }
 
 function reclassifyAll() {
@@ -677,6 +723,7 @@ function classifyCourse(fileName, hint, visual, detectedText = "", aiUnderstandi
     return {
       major: "未选择专业",
       course: "未识别课程",
+      courseGroup: "待确认",
       confidence: 0,
       reason: "请先选择专业。"
     };
@@ -691,9 +738,16 @@ function classifyCourse(fileName, hint, visual, detectedText = "", aiUnderstandi
   const reasons = new Map(Object.keys(courses).map((course) => [course, []]));
 
   for (const [course, keywords] of Object.entries(courses)) {
+    const normalizedCourse = normalize(course);
+    if (normalizedCourse && text.includes(normalizedCourse)) {
+      scores.set(course, scores.get(course) + 30);
+      reasons.get(course).push(`课程名“${course}”`);
+    }
     for (const keyword of keywords) {
-      if (text.includes(normalize(keyword))) {
-        scores.set(course, scores.get(course) + keyword.length + 4);
+      const normalizedKeyword = normalize(keyword);
+      if (normalizedKeyword.length >= 2 && text.includes(normalizedKeyword)) {
+        const weight = Math.min(12, Math.max(2, normalizedKeyword.length * 2));
+        scores.set(course, scores.get(course) + weight);
         reasons.get(course).push(`关键词“${keyword}”`);
       }
     }
@@ -716,6 +770,7 @@ function classifyCourse(fileName, hint, visual, detectedText = "", aiUnderstandi
     return {
       major: state.major,
       course: "未识别课程",
+      courseGroup: "待确认",
       confidence: visual && useVisualHints.checked ? 36 : 18,
       reason: aiUnderstanding
         ? "AI 已分析图片，但未匹配到当前专业课程库。"
@@ -732,11 +787,20 @@ function classifyCourse(fileName, hint, visual, detectedText = "", aiUnderstandi
   return {
     major: state.major,
     course: bestCourse,
+    courseGroup: getCourseGroup(bestCourse),
     confidence: Math.min(98, Math.round((aiUnderstanding ? 58 : 45) + bestScore * 5)),
     reason: aiUnderstanding
       ? `AI理解：${aiUnderstanding.summary || "已分析图片内容"}`
       : [...new Set(reasons.get(bestCourse))].slice(0, 3).join("、") || "图片视觉线索匹配。"
   };
+}
+
+function getCourseGroup(course) {
+  if (!course || course === "未识别课程") return "待确认";
+  for (const [group, pattern] of courseGroupRules) {
+    if (pattern.test(course)) return group;
+  }
+  return "专业核心课程";
 }
 
 async function understandImageWithAi(dataUrl, fileName) {
@@ -906,10 +970,11 @@ function stopCamera() {
   cameraPreview.srcObject = null;
 }
 
-function clearAll() {
+async function clearAll() {
   state.items = [];
   hintText.value = "";
   render();
+  await persistItems();
 }
 
 function exportResults() {
@@ -931,6 +996,7 @@ function exportResults() {
 
 function render() {
   renderAiStatus();
+  updateMajorSelectionUI();
   const courses = Object.keys(getCurrentCourses());
   currentMajorName.textContent = state.major || "未选择专业";
   coursePoolCount.textContent = `${courses.length} 门课程可识别`;
@@ -979,20 +1045,33 @@ function renderCard(item, courses) {
 
   select.addEventListener("change", () => {
     item.course = select.value;
+    item.courseGroup = getCourseGroup(select.value);
     item.confidence = 99;
     item.reason = "手动调整。";
     render();
+    scheduleSave();
   });
 
   remove.addEventListener("click", () => {
     state.items = state.items.filter((candidate) => candidate.id !== item.id);
     render();
+    scheduleSave();
   });
 
   return card;
 }
 
 function groupItems(items) {
+  if (mergeRelatedCourses.checked) {
+    const grouped = new Map();
+    for (const item of items) {
+      const group = item.courseGroup || getCourseGroup(item.course);
+      if (!grouped.has(group)) grouped.set(group, []);
+      grouped.get(group).push(item);
+    }
+    return grouped;
+  }
+
   const ordered = new Map();
   for (const course of ["未识别课程", ...Object.keys(getCurrentCourses())]) {
     const matches = items.filter((item) => item.course === course);
@@ -1003,11 +1082,90 @@ function groupItems(items) {
 
 function updateSummary() {
   const count = state.items.length;
-  const used = new Set(state.items.map((item) => item.course));
+  const used = new Set(state.items.map((item) =>
+    mergeRelatedCourses.checked ? item.courseGroup || getCourseGroup(item.course) : item.course
+  ));
   const avg = count ? Math.round(state.items.reduce((sum, item) => sum + item.confidence, 0) / count) : 0;
   totalCount.textContent = String(count);
   courseCount.textContent = String(used.size);
   avgConfidence.textContent = `${avg}%`;
+}
+
+function updateMajorSelectionUI() {
+  majorField.hidden = Boolean(state.major) && !state.editingMajor;
+  changeMajorBtn.hidden = !state.major;
+}
+
+function scheduleSave() {
+  clearTimeout(state.saveTimer);
+  saveStatus.textContent = "保存中";
+  state.saveTimer = setTimeout(persistItems, 350);
+}
+
+async function persistItems() {
+  clearTimeout(state.saveTimer);
+  saveStatus.textContent = "保存中";
+  try {
+    const db = await openStorageDb();
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORAGE_STORE, "readwrite");
+      transaction.objectStore(STORAGE_STORE).put({
+        id: STORAGE_KEY,
+        items: state.items,
+        hintText: hintText.value,
+        mergeRelatedCourses: mergeRelatedCourses.checked,
+        savedAt: Date.now()
+      });
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
+    saveStatus.textContent = "已保存";
+  } catch (error) {
+    saveStatus.textContent = "保存失败";
+  }
+}
+
+async function restoreItems() {
+  saveStatus.textContent = "恢复中";
+  try {
+    const db = await openStorageDb();
+    const saved = await new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORAGE_STORE, "readonly");
+      const request = transaction.objectStore(STORAGE_STORE).get(STORAGE_KEY);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+
+    if (saved) {
+      state.items = Array.isArray(saved.items)
+        ? saved.items.map((item) => ({
+            ...item,
+            courseGroup: item.courseGroup || getCourseGroup(item.course)
+          }))
+        : [];
+      hintText.value = saved.hintText || "";
+      mergeRelatedCourses.checked = saved.mergeRelatedCourses !== false;
+    }
+    saveStatus.textContent = "已保存";
+  } catch (error) {
+    saveStatus.textContent = "未保存";
+  }
+}
+
+function openStorageDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(STORAGE_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORAGE_STORE)) {
+        db.createObjectStore(STORAGE_STORE, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
 
 function getCurrentCourses() {
